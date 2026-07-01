@@ -18,6 +18,16 @@ Options:
 EOF
 }
 
+json_escape() {
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  s="${s//$'\n'/\\n}"
+  s="${s//$'\r'/\\r}"
+  s="${s//$'\t'/\\t}"
+  printf '%s' "$s"
+}
+
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source_root="$script_dir"
 project_root="$(pwd)"
@@ -56,6 +66,10 @@ if [[ ! -d "$project_root" ]]; then
 fi
 
 project_root="$(cd "$project_root" && pwd)"
+if [[ "$project_root" == "/" || "$project_root" == "$HOME" ]]; then
+  echo "Refusing to use filesystem root or home directory as project root: $project_root" >&2
+  exit 1
+fi
 target_skills_root="$project_root/.trae/skills"
 
 skills=()
@@ -114,21 +128,21 @@ manifest="$target_skills_root/mindstudio-skills-install.json"
 {
   echo "{"
   echo "  \"installed_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\","
-  echo "  \"source_root\": \"${source_root//\\/\\\\}\","
-  echo "  \"project_root\": \"${project_root//\\/\\\\}\","
-  echo "  \"target_skills_root\": \"${target_skills_root//\\/\\\\}\","
+  echo "  \"source_root\": \"$(json_escape "$source_root")\","
+  echo "  \"project_root\": \"$(json_escape "$project_root")\","
+  echo "  \"target_skills_root\": \"$(json_escape "$target_skills_root")\","
   echo "  \"skills\": ["
   for i in "${!skills[@]}"; do
     comma=","
     [[ "$i" -eq $((${#skills[@]} - 1)) ]] && comma=""
-    echo "    \"${skills[$i]}\"$comma"
+    echo "    \"$(json_escape "${skills[$i]}")\"$comma"
   done
   echo "  ],"
   echo "  \"backups\": ["
   for i in "${!backups[@]}"; do
     comma=","
     [[ "$i" -eq $((${#backups[@]} - 1)) ]] && comma=""
-    echo "    \"${backups[$i]}\"$comma"
+    echo "    \"$(json_escape "${backups[$i]}")\"$comma"
   done
   echo "  ]"
   echo "}"
